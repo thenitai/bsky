@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "thenitai.bsky",
+  "name": "Bluesky composer",
+  "version": "0.1.0",
+  "author": "thenitai",
+  "license": "MIT",
+  "description": "Post to Bluesky from anywhere — text, screenshots and clipboard images via a global shortcut",
+  "kinds": ["overlay"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "Bsky.qml"
+  }
+}
