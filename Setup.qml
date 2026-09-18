@@ -76,34 +76,6 @@ Column {
     Keys.onEscapePressed: function(event) { setup.dismissRequested(); event.accepted = true }
   }
 
-  Row {
-    spacing: setup.contentSpacing
-
-    Button {
-      id: saveButton
-      text: setup.busy ? "Verifying…" : "Save & verify"
-      selected: true
-      enabled: !setup.busy && handleField.text.trim() !== "" && appPasswordField.text.trim() !== ""
-      onClicked: {
-        if (setup.busy) return
-        setup.saved(handleField.text.trim(), appPasswordField.text.trim(), pdsField.text.trim())
-      }
-    }
-
-    Button {
-      text: "Clear"
-      enabled: !setup.busy
-      visible: setup.statusText !== "" && setup.statusError
-      onClicked: {
-        handleField.text = ""
-        appPasswordField.text = ""
-        pdsField.text = ""
-        setup.clearStatus()
-        handleField.forceActiveFocus()
-      }
-    }
-  }
-
   Text {
     visible: setup.statusText !== ""
     width: parent.width
@@ -116,20 +88,51 @@ Column {
     wrapMode: Text.WordWrap
   }
 
-  Text {
-    visible: setup.canGoBack
-    text: "← Back"
-    color: setup.foreground
-    opacity: backLinkMouse.containsMouse ? 1 : 0.55
-    font.family: setup.fontFamily
-    font.pixelSize: Style.font.caption
+  Item {
+    width: parent.width
+    height: Style.space(32)
 
-    MouseArea {
-      id: backLinkMouse
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
+    Button {
+      id: backButton
+      anchors.left: parent.left
+      height: parent.height
+      visible: setup.canGoBack
+      text: "Back"
+      enabled: !setup.busy
       onClicked: setup.backRequested()
+    }
+
+    Row {
+      anchors.right: parent.right
+      spacing: setup.contentSpacing
+      height: parent.height
+
+      Button {
+        id: clearButton
+        height: parent.height
+        enabled: !setup.busy
+        visible: setup.statusText !== "" && setup.statusError
+        text: "Clear"
+        onClicked: {
+          handleField.text = ""
+          appPasswordField.text = ""
+          pdsField.text = ""
+          setup.clearStatus()
+          handleField.forceActiveFocus()
+        }
+      }
+
+      Button {
+        id: saveButton
+        height: parent.height
+        text: setup.busy ? "Verifying…" : "Save & verify"
+        selected: true
+        enabled: !setup.busy && handleField.text.trim() !== "" && appPasswordField.text.trim() !== ""
+        onClicked: {
+          if (setup.busy) return
+          setup.saved(handleField.text.trim(), appPasswordField.text.trim(), pdsField.text.trim())
+        }
+      }
     }
   }
 }

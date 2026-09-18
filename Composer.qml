@@ -225,14 +225,14 @@ Column {
 
   // ---- footer actions -------------------------------------------------------
 
-  Row {
+  Item {
     width: parent.width
     height: c.footerHeight
-    spacing: c.contentSpacing
 
     Row {
       id: actionButtons
-      height: parent.height
+      anchors.left: parent.left
+      anchors.verticalCenter: parent.verticalCenter
       spacing: Style.space(6)
 
       Text {
@@ -256,7 +256,7 @@ Column {
       Button {
         visible: c.postUrl && !c.replyRef
         text: "Reply"
-        height: parent.height
+        height: c.footerHeight
         enabled: !c.sending
         tooltipText: "Reply to the bsky.app post in your text"
         onClicked: c.replyRequested()
@@ -265,7 +265,7 @@ Column {
       Button {
         visible: c.postUrl && !c.quoteRef
         text: "Quote"
-        height: parent.height
+        height: c.footerHeight
         enabled: !c.sending
         tooltipText: "Quote the bsky.app post in your text"
         onClicked: c.quoteRequested()
@@ -275,7 +275,7 @@ Column {
         visible: c.replyRef !== null
         selected: true
         text: "Replying to @" + (c.replyRef ? c.replyRef.handle : "")
-        height: parent.height
+        height: c.footerHeight
         enabled: !c.sending
         onClicked: c.clearReplyRequested()
       }
@@ -284,7 +284,7 @@ Column {
         visible: c.quoteRef !== null
         selected: true
         text: "Quoting @" + (c.quoteRef ? c.quoteRef.handle : "")
-        height: parent.height
+        height: c.footerHeight
         enabled: !c.sending
         onClicked: c.clearQuoteRequested()
       }
@@ -292,22 +292,18 @@ Column {
       Button {
         visible: c.linkCardAvailable
         text: "Link card"
-        height: parent.height
+        height: c.footerHeight
         enabled: !c.sending
         tooltipText: "Attach an OpenGraph card for the pasted link"
         onClicked: c.linkCardRequested()
       }
     }
 
-    Item {
-      width: Math.max(0, parent.width - actionButtons.implicitWidth - rightControls.implicitWidth - 2 * parent.spacing)
-      height: 1
-    }
-
     Row {
       id: rightControls
-      height: parent.height
-      spacing: Style.space(10)
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      spacing: Style.space(12)
 
       Text {
         y: (parent.height - height) / 2
@@ -318,14 +314,19 @@ Column {
         font.pixelSize: Style.font.caption
       }
 
-      Text {
-        id: pasteGlyph
+      Item {
+        width: Style.space(30)
+        height: Style.space(30)
         y: (parent.height - height) / 2
-        text: "\uF03E"
-        color: c.foreground
-        opacity: !pasteMouse.enabled ? 0.3 : (pasteMouse.containsMouse ? 1 : 0.55)
-        font.family: c.fontFamily
-        font.pixelSize: Style.font.iconSmall
+
+        Text {
+          anchors.centerIn: parent
+          text: "\uF03E"
+          color: c.foreground
+          opacity: !pasteMouse.enabled ? 0.3 : (pasteMouse.containsMouse ? 1 : 0.55)
+          font.family: c.fontFamily
+          font.pixelSize: Style.font.iconLarge
+        }
 
         ToolTip.visible: pasteMouse.containsMouse
         ToolTip.delay: 400
@@ -343,7 +344,7 @@ Column {
 
       Button {
         id: postButton
-        height: parent.height
+        height: c.footerHeight
         text: c.sending ? "Sending…" : "Post"
         selected: true
         enabled: c.canPost

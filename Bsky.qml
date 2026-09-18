@@ -469,6 +469,8 @@ Item {
       if (h) hashes.push(h)
     }
     root.postedHashes = hashes
+    if (hashes.length > 0)
+      writeFileProc.writeSecret("posted.json", JSON.stringify({ hashes: hashes }), null)
     if (root.linkCard && root.linkCard.thumbPath) {
       var files = root.tempFiles.slice()
       files.push(root.linkCard.thumbPath)
@@ -495,7 +497,7 @@ Item {
   Process {
     id: initStorage
     command: ["sh", "-c",
-      "umask 077; mkdir -p \"$1\" && chmod 700 \"$1\" && touch \"$1/prefs.json\" \"$1/session.json\" \"$1/app-password\" && chmod 600 \"$1/session.json\" \"$1/app-password\"",
+      "umask 077; mkdir -p \"$1\" && chmod 700 \"$1\" && touch \"$1/prefs.json\" \"$1/session.json\" \"$1/app-password\" \"$1/posted.json\" && chmod 600 \"$1/session.json\" \"$1/app-password\" \"$1/posted.json\"",
       "bsky-storage", root.stateDir]
     running: true
     onExited: function(code) {
@@ -691,6 +693,20 @@ Item {
     id: passwordView
     path: root.storageReady ? root.stateDir + "/app-password" : ""
     onLoaded: root.appPassword = (text() || "").trim()
+  }
+
+  // Hashes of images from the most recent successful post, so reopening
+  // the composer doesn't re-attach an image still on the clipboard —
+  // including across shell restarts.
+  FileView {
+    id: postedView
+    path: root.storageReady ? root.stateDir + "/posted.json" : ""
+    onLoaded: {
+      try {
+        var data = JSON.parse(text() || "{}")
+        if (data && Array.isArray(data.hashes)) root.postedHashes = data.hashes
+      } catch (e) {}
+    }
   }
 
   // Reads intrinsic image dimensions for the embed aspectRatio.
