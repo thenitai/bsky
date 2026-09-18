@@ -96,6 +96,26 @@ Column {
       } else if (event.key === Qt.Key_V && (event.modifiers & Qt.ControlModifier)) {
         c.pasteRequested()
         event.accepted = true
+      } else if ((event.modifiers & Qt.MetaModifier)
+                 && !(event.modifiers & Qt.ControlModifier)) {
+        // Super-mapped editing keys (delivered when the triggering Hyprland
+        // bind is created with allow_input_capture = true).
+        if (event.key === Qt.Key_A) {
+          textArea.selectAll()
+          event.accepted = true
+        } else if (event.key === Qt.Key_V) {
+          c.pasteRequested()
+          event.accepted = true
+        } else if (event.key === Qt.Key_C) {
+          textArea.copy()
+          event.accepted = true
+        } else if (event.key === Qt.Key_X) {
+          textArea.cut()
+          event.accepted = true
+        } else if (event.key === Qt.Key_Z) {
+          textArea.undo()
+          event.accepted = true
+        }
       }
     }
   }

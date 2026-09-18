@@ -823,6 +823,10 @@ Item {
           contentSpacing: root.contentSpacing
           busy: root.savingSetup
           canGoBack: root.configured
+          signedIn: root.configured
+          currentHandle: root.handle
+          currentPassword: root.appPassword
+          currentPds: root.pds
           onSaved: function(handle, password, pds) { root.saveCredentials(handle, password, pds) }
           onBackRequested: {
             root.setupMode = false

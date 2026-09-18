@@ -56,6 +56,8 @@ Pick any free combo you like.
 | `Esc` | Close (draft is kept) |
 | `Ctrl+Enter` | Post |
 | `Ctrl+V` | Attach clipboard image, or paste text at the cursor |
+| `Ctrl+A/C/X/Z` | Standard text editing |
+| `Super+A/V/C/X/Z` | Same, for Super-mapped system shortcuts — requires the triggering Hyprland bind to opt in with `{ allow_input_capture = true }` |
 | Click outside | Close |
 
 ## API notes

@@ -16,6 +16,10 @@ Column {
   property int contentSpacing: Style.space(16)
   property bool busy: false
   property bool canGoBack: false
+  property bool signedIn: false
+  property string currentHandle: ""
+  property string currentPassword: ""
+  property string currentPds: ""
   property string statusText: ""
   property bool statusError: false
 
@@ -29,8 +33,16 @@ Column {
     statusText = ""
   }
 
+  function prefill() {
+    handleField.text = setup.currentHandle
+    appPasswordField.text = setup.currentPassword
+    pdsField.text = setup.currentPds
+  }
+
+  onVisibleChanged: if (visible) prefill()
+
   Text {
-    text: "Sign in to Bluesky"
+    text: setup.signedIn ? "Bluesky settings" : "Sign in to Bluesky"
     color: setup.foreground
     font.family: setup.fontFamily
     font.pixelSize: Style.font.heading
