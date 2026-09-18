@@ -8,10 +8,11 @@ a screenshot), Enter. A tiny composer overlay for the Omarchy Quattro shell.
 ## Features
 
 - **Global shortcut** composer overlay — summon from any workspace, Esc closes
-- **Text posts** with a 300-character grapheme counter, link and `@mention`
-  facets (clickable on Bluesky)
+- **Text posts** with a 300-character grapheme counter, link, `#hashtag` and
+  `@mention` facets (clickable on Bluesky)
 - **Clipboard images** — an image on the clipboard is auto-attached when the
-  composer opens; up to 4 images per post, each with alt text and correct
+  composer opens (an image you just posted is not re-attached until the
+  clipboard changes); up to 4 images per post, each with alt text and correct
   aspect ratio. GIF/BMP clipboard images are converted to PNG via ffmpeg.
 - **Reply & quote** — include a `bsky.app` post URL in your text, then hit
   *Reply* or *Quote*

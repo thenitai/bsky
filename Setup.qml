@@ -15,10 +15,12 @@ Column {
   property string fontFamily: Style.font.menuFamily
   property int contentSpacing: Style.space(16)
   property bool busy: false
+  property bool canGoBack: false
   property string statusText: ""
   property bool statusError: false
 
   signal saved(string handle, string password, string pds)
+  signal backRequested()
   signal dismissRequested()
 
   property alias handleField: handleField
@@ -112,5 +114,22 @@ Column {
     font.family: setup.fontFamily
     font.pixelSize: Style.font.caption
     wrapMode: Text.WordWrap
+  }
+
+  Text {
+    visible: setup.canGoBack
+    text: "← Back"
+    color: setup.foreground
+    opacity: backLinkMouse.containsMouse ? 1 : 0.55
+    font.family: setup.fontFamily
+    font.pixelSize: Style.font.caption
+
+    MouseArea {
+      id: backLinkMouse
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onClicked: setup.backRequested()
+    }
   }
 }

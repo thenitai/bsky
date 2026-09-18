@@ -7,7 +7,7 @@ const path = require("path")
 let src = fs.readFileSync(path.join(__dirname, "..", "Api.js"), "utf8")
 src = src.replace(/\.pragma library\n/, "")
 global.XMLHttpRequest = function () { throw new Error("no xhr in tests") }
-const Api = eval("(function(){" + src + "; return {DEFAULT_PDS, APPVIEW, MAX_GRAPHEMES, MAX_IMAGES, MAX_URLS, MAX_IMAGE_BYTES, pdsRoot, errorText, findPostUrl, atUriFor, extractUrls, extractMentions, mentionHandles, byteOffsets, buildFacets, buildRecord, imagesEmbed, recordEmbed, recordWithMediaEmbed, externalEmbed, graphemeCount, validate, looksLikeAppPassword, decodeEntities, parseOgTags, hostOf, resolveUrl}})()")
+const Api = eval("(function(){" + src + "; return {DEFAULT_PDS, APPVIEW, MAX_GRAPHEMES, MAX_IMAGES, MAX_URLS, MAX_IMAGE_BYTES, pdsRoot, errorText, findPostUrl, atUriFor, extractUrls, extractMentions, mentionHandles, extractTags, spanOverlaps, byteOffsets, buildFacets, buildRecord, imagesEmbed, recordEmbed, recordWithMediaEmbed, externalEmbed, graphemeCount, validate, looksLikeAppPassword, decodeEntities, parseOgTags, hostOf, resolveUrl}})()")
 
 let failed = 0
 function eq(name, got, want) {
@@ -66,6 +66,28 @@ eq("facet link slice", bytes.slice(linkF.index.byteStart, linkF.index.byteEnd).t
 eq("facet link feature", linkF.features[0], { $type: "app.bsky.richtext.facet#link", uri: "https://x.example" })
 eq("facet mention slice", bytes.slice(menF.index.byteStart, menF.index.byteEnd).toString(), "@carol.bsky.social")
 eq("facet mention did", menF.features[0], { $type: "app.bsky.richtext.facet#mention", did: "did:plc:carol" })
+
+// hashtags
+const t3 = "loving #omarchy on #bsky!"
+const tags = Api.extractTags(t3)
+eq("tags count", tags.length, 2)
+eq("tag first", tags[0], { tag: "omarchy", start: 7, end: 15 })
+eq("tag slice", t3.slice(tags[1].start, tags[1].end), "#bsky")
+eq("tag at string start", Api.extractTags("#top ")[0].tag, "top")
+eq("midword tag ignored", Api.extractTags("foo#bar").length, 0)
+eq("numeric tag ignored", Api.extractTags("#123 ok").length, 0)
+eq("mixed tag kept", Api.extractTags("#a12 ok")[0].tag, "a12")
+eq("underscore tag kept", Api.extractTags("#hello_world")[0].tag, "hello_world")
+const f3 = Api.buildFacets(t3, {})
+const tagF = f3[0]
+eq("tag facet feature", tagF.features[0], { $type: "app.bsky.richtext.facet#tag", tag: "omarchy" })
+eq("tag facet slice", Buffer.from(t3, "utf8").slice(tagF.index.byteStart, tagF.index.byteEnd).toString(), "#omarchy")
+// url fragment must not become a tag
+const t4 = "see https://x.com/#anchor and #real"
+const f4 = Api.buildFacets(t4, {})
+const f4tags = f4.filter(function(f) { return f.features[0].$type.indexOf("#tag") !== -1 })
+eq("url anchor not a tag", f4tags.length, 1)
+eq("real tag after url", f4tags[0].features[0].tag, "real")
 
 // did-mention passes through
 const f2 = Api.buildFacets("ping @did:plc:direct", {})

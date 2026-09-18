@@ -68,6 +68,11 @@ Item {
   property string dimProbePath: ""
   property int dimProbeIndex: -1
 
+  // Content hashes of images from the most recent successful post. The
+  // auto-grab on open uses them to avoid re-attaching an image that is
+  // still sitting on the clipboard after it was just posted.
+  property var postedHashes: []
+
   // ---- upload pipeline scratch state -----------------------------------------
   property var uploadQueue: []
   property var uploadedBlobs: []
@@ -145,13 +150,17 @@ Item {
     grabProc.running = true
   }
 
-  function addImage(mime, path, size) {
+  function addImage(mime, path, size, hash, manual) {
+    if (!manual && hash && root.postedHashes.indexOf(hash) !== -1) {
+      root.rmFile(path)
+      return
+    }
     if (size > Api.MAX_IMAGE_BYTES) {
       root.rmFile(path)
       flash("Image is over the 1 MB Bluesky limit", true)
       return
     }
-    imageModel.append({ path: path, mime: mime, size: size, alt: "", aspectWidth: 0, aspectHeight: 0 })
+    imageModel.append({ path: path, mime: mime, size: size, hash: hash || "", alt: "", aspectWidth: 0, aspectHeight: 0 })
     var files = root.tempFiles.slice()
     files.push(path)
     root.tempFiles = files
@@ -454,6 +463,12 @@ Item {
 
   function postSuccess(uri) {
     root.sending = false
+    var hashes = []
+    for (var i = 0; i < imageModel.count; i++) {
+      var h = imageModel.get(i).hash
+      if (h) hashes.push(h)
+    }
+    root.postedHashes = hashes
     if (root.linkCard && root.linkCard.thumbPath) {
       var files = root.tempFiles.slice()
       files.push(root.linkCard.thumbPath)
@@ -535,7 +550,8 @@ Item {
       var out = grabOut.text.trim()
       if (code === 0 && out) {
         var parts = out.split("\t")
-        if (parts.length >= 3) root.addImage(parts[0], parts[1], parseInt(parts[2], 10) || 0)
+        if (parts.length >= 4)
+          root.addImage(parts[0], parts[1], parseInt(parts[2], 10) || 0, parts[3], grabProc.manual)
       } else if (grabProc.manual) {
         pasteTextProc.manual = true
         pasteTextProc.running = true
@@ -760,52 +776,13 @@ Item {
         anchors.topMargin: card.contentTopInset
         spacing: root.contentSpacing
 
-        Row {
-          id: headerRow
-          width: parent.width
-          spacing: root.contentSpacing
-          visible: root.configured
-
-          Text {
-            id: headerTitle
-            y: (parent.height - height) / 2
-            visible: !root.setupMode
-            text: "Bluesky"
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.heading
-            font.bold: true
-          }
-
-          Item {
-            width: Math.max(0, parent.width
-              - (headerTitle.visible ? headerTitle.width + parent.spacing : 0)
-              - (accountLabel.visible ? accountLabel.width + parent.spacing : 0)
-              - settingsButton.width)
-            height: 1
-          }
-
-          Text {
-            id: accountLabel
-            y: (parent.height - height) / 2
-            visible: !root.setupMode
-            text: "@" + root.handle
-            color: root.foreground
-            opacity: 0.55
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-          }
-
-          Button {
-            id: settingsButton
-            y: (parent.height - height) / 2
-            text: root.setupMode ? "Back" : "Settings"
-            enabled: !root.savingSetup && !root.sending
-            onClicked: {
-              root.setupMode = !root.setupMode
-              Qt.callLater(root.focusDefault)
-            }
-          }
+        Text {
+          visible: root.configured && !root.setupMode
+          text: "Bluesky"
+          color: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.heading
+          font.bold: true
         }
 
         Text {
@@ -829,7 +806,12 @@ Item {
           fontFamily: root.fontFamily
           contentSpacing: root.contentSpacing
           busy: root.savingSetup
+          canGoBack: root.configured
           onSaved: function(handle, password, pds) { root.saveCredentials(handle, password, pds) }
+          onBackRequested: {
+            root.setupMode = false
+            Qt.callLater(root.focusDefault)
+          }
           onDismissRequested: function() {
             if (root.configured) {
               root.setupMode = false
@@ -854,6 +836,10 @@ Item {
           onPostRequested: root.startPost()
           onPasteRequested: root.grabClipboardImage(true)
           onDismissRequested: root.dismiss()
+          onSettingsRequested: {
+            root.setupMode = true
+            Qt.callLater(root.focusDefault)
+          }
           onReplyRequested: root.resolveRef("reply")
           onQuoteRequested: root.resolveRef("quote")
           onClearReplyRequested: root.replyRef = null

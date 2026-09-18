@@ -27,6 +27,7 @@ Column {
   signal postRequested()
   signal pasteRequested()
   signal dismissRequested()
+  signal settingsRequested()
   signal replyRequested()
   signal quoteRequested()
   signal clearReplyRequested()
@@ -234,12 +235,22 @@ Column {
       height: parent.height
       spacing: Style.space(6)
 
-      Button {
-        text: "Paste image"
-        height: parent.height
-        enabled: !c.sending && (!c.imageModel || c.imageModel.count < Api.MAX_IMAGES)
-        tooltipText: "Ctrl+V also works"
-        onClicked: c.pasteRequested()
+      Text {
+        id: settingsLink
+        y: (parent.height - height) / 2
+        text: "Settings"
+        color: c.foreground
+        opacity: settingsLinkMouse.containsMouse ? 1 : 0.55
+        font.family: c.fontFamily
+        font.pixelSize: Style.font.caption
+
+        MouseArea {
+          id: settingsLinkMouse
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onClicked: c.settingsRequested()
+        }
       }
 
       Button {
@@ -296,7 +307,7 @@ Column {
     Row {
       id: rightControls
       height: parent.height
-      spacing: c.contentSpacing
+      spacing: Style.space(10)
 
       Text {
         y: (parent.height - height) / 2
@@ -305,6 +316,29 @@ Column {
         opacity: c.overLimit ? 1 : 0.55
         font.family: c.fontFamily
         font.pixelSize: Style.font.caption
+      }
+
+      Text {
+        id: pasteGlyph
+        y: (parent.height - height) / 2
+        text: "\uF03E"
+        color: c.foreground
+        opacity: !pasteMouse.enabled ? 0.3 : (pasteMouse.containsMouse ? 1 : 0.55)
+        font.family: c.fontFamily
+        font.pixelSize: Style.font.iconSmall
+
+        ToolTip.visible: pasteMouse.containsMouse
+        ToolTip.delay: 400
+        ToolTip.text: "Paste image from clipboard"
+
+        MouseArea {
+          id: pasteMouse
+          anchors.fill: parent
+          hoverEnabled: true
+          enabled: !c.sending && (!c.imageModel || c.imageModel.count < Api.MAX_IMAGES)
+          cursorShape: Qt.PointingHandCursor
+          onClicked: c.pasteRequested()
+        }
       }
 
       Button {

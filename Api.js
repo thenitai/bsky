@@ -205,6 +205,31 @@ function mentionHandles(text) {
   return out
 }
 
+// Hashtags: #word at a word boundary. All-digit tags are not real tags
+// (Bluesky requires at least one letter).
+var TAG_CHARS = "A-Za-z0-9_\\u00C0-\\u024F\\u0370-\\u03FF\\u0400-\\u04FF\\u3040-\\u30FF\\u4E00-\\u9FFF"
+var TAG_LETTER = new RegExp("[^0-9_]")
+
+function extractTags(text) {
+  var t = String(text || "")
+  var out = []
+  var re = new RegExp("(^|[^\\w&#])(#[" + TAG_CHARS + "]+)", "g")
+  var m
+  while ((m = re.exec(t)) !== null) {
+    var tag = m[2].slice(1)
+    if (!TAG_LETTER.test(tag)) continue
+    var start = m.index + m[1].length
+    out.push({ tag: tag, start: start, end: start + m[2].length })
+  }
+  return out
+}
+
+function spanOverlaps(spans, start, end) {
+  for (var i = 0; i < spans.length; i++)
+    if (start < spans[i].end && spans[i].start < end) return true
+  return false
+}
+
 // ---- UTF-8 byte offsets for facets ---------------------------------------
 
 // cum[i] = UTF-8 byte offset of code-unit i; cum[n] = total byte length.
@@ -241,8 +266,10 @@ function buildFacets(text, didMap) {
   var cum = byteOffsets(t)
   var facets = []
   var urls = extractUrls(t)
+  var urlSpans = []
   for (var i = 0; i < urls.length; i++) {
     var u = urls[i]
+    urlSpans.push({ start: u.start, end: u.end })
     facets.push({
       index: { byteStart: cum[u.start], byteEnd: cum[u.end] },
       features: [{ $type: "app.bsky.richtext.facet#link", uri: u.url }]
@@ -251,6 +278,7 @@ function buildFacets(text, didMap) {
   var mens = extractMentions(t)
   for (var j = 0; j < mens.length; j++) {
     var me = mens[j]
+    if (spanOverlaps(urlSpans, me.start, me.end)) continue
     var did = null
     if (me.handle.indexOf("did:") === 0) did = me.handle
     else if (didMap) did = didMap[me.handle.toLowerCase()]
@@ -259,6 +287,15 @@ function buildFacets(text, didMap) {
     facets.push({
       index: { byteStart: cum[me.start], byteEnd: cum[me.start + me.handle.length + 1] },
       features: [{ $type: "app.bsky.richtext.facet#mention", did: did }]
+    })
+  }
+  var tags = extractTags(t)
+  for (var k = 0; k < tags.length; k++) {
+    var tg = tags[k]
+    if (spanOverlaps(urlSpans, tg.start, tg.end)) continue
+    facets.push({
+      index: { byteStart: cum[tg.start], byteEnd: cum[tg.end] },
+      features: [{ $type: "app.bsky.richtext.facet#tag", tag: tg.tag }]
     })
   }
   return facets

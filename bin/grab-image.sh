@@ -44,4 +44,5 @@ case "$mime" in
 esac
 
 size=$(stat -c%s "$tmp")
-printf '%s\t%s\t%s\n' "$mime" "$tmp" "$size"
+hash=$(sha256sum "$tmp" | awk '{print $1}')
+printf '%s\t%s\t%s\t%s\n' "$mime" "$tmp" "$size" "$hash"
