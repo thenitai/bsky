@@ -20,10 +20,15 @@ Column {
   property string currentHandle: ""
   property string currentPassword: ""
   property string currentPds: ""
+  property string shortcutValue: ""
+  property bool shortcutBusy: false
+  property bool shortcutOk: true
+  property string shortcutMessage: ""
   property string statusText: ""
   property bool statusError: false
 
   signal saved(string handle, string password, string pds)
+  signal shortcutApply(string value)
   signal backRequested()
   signal dismissRequested()
 
@@ -34,6 +39,7 @@ Column {
   }
 
   function prefill() {
+    shortcutField.text = setup.shortcutValue
     handleField.text = setup.currentHandle
     appPasswordField.text = setup.currentPassword
     pdsField.text = setup.currentPds
@@ -47,6 +53,66 @@ Column {
     font.family: setup.fontFamily
     font.pixelSize: Style.font.heading
     font.bold: true
+  }
+
+  // ---- global shortcut ------------------------------------------------------
+
+  Text {
+    text: "Global shortcut"
+    color: setup.foreground
+    font.family: setup.fontFamily
+    font.pixelSize: Style.font.subtitle
+    font.bold: true
+  }
+
+  Row {
+    width: parent.width
+    spacing: setup.contentSpacing
+
+    TextField {
+      id: shortcutField
+      width: parent.width - shortcutApplyButton.width - parent.spacing
+      enabled: !setup.shortcutBusy
+      placeholderText: "Disabled"
+      color: setup.foreground
+      font.family: setup.fontFamily
+      onAccepted: setup.shortcutApply(text)
+      Keys.onEscapePressed: function(event) {
+        if (!setup.shortcutBusy) setup.dismissRequested()
+        event.accepted = true
+      }
+    }
+
+    Button {
+      id: shortcutApplyButton
+      height: Style.space(30)
+      text: setup.shortcutBusy ? "Applying…" : "Apply"
+      bordered: true
+      enabled: !setup.shortcutBusy
+      onClicked: setup.shortcutApply(shortcutField.text)
+    }
+  }
+
+  Text {
+    width: parent.width
+    text: "Super, Ctrl, Alt, Shift + a key. Leave empty to disable."
+    color: setup.foreground
+    opacity: 0.5
+    font.family: setup.fontFamily
+    font.pixelSize: Style.font.caption
+    wrapMode: Text.WordWrap
+  }
+
+  Text {
+    visible: setup.shortcutMessage !== ""
+    width: parent.width
+    text: setup.shortcutMessage
+    textFormat: Text.PlainText
+    color: setup.shortcutOk ? setup.foreground : setup.errorColor
+    opacity: setup.shortcutOk ? 0.7 : 1
+    font.family: setup.fontFamily
+    font.pixelSize: Style.font.caption
+    wrapMode: Text.WordWrap
   }
 
   TextField {

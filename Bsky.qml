@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "Api.js" as Api
+import "ShortcutModel.js" as ShortcutModel
 
 // Bluesky composer overlay. Summoned with a Hyprland binding:
 //   omarchy-shell shell toggle thenitai.bsky
@@ -72,6 +73,67 @@ Item {
   // auto-grab on open uses them to avoid re-attaching an image that is
   // still sitting on the clipboard after it was just posted.
   property var postedHashes: []
+
+  // ---- global shortcut (registered at runtime via hyprctl eval) -----------
+  property string shortcut: ""
+  property string shortcutRegistered: ""
+  property string shortcutCandidate: ""
+  property bool shortcutPersist: false
+  property bool shortcutBusy: false
+  property bool shortcutOk: true
+  property string shortcutMessage: ""
+  readonly property string shortcutOwner: "bsky:" + Date.now() + ":"
+    + Math.random().toString(36).slice(2)
+
+  function applyShortcut(value, persist) {
+    if (root.shortcutBusy) return
+    var parsed = ShortcutModel.parse(value)
+    root.shortcutOk = false
+    if (String(value || "").trim() !== "" && !parsed) {
+      root.shortcutMessage = "Use modifiers and a key, for example SUPER + B."
+      return
+    }
+    root.shortcutCandidate = parsed ? parsed.text : ""
+    root.shortcutPersist = persist === true
+    root.shortcutMessage = ""
+    root.shortcutBusy = true
+    shortcutBindsProc.running = true
+  }
+
+  function checkShortcutBindings(text, code) {
+    if (code !== 0 || !text.trim()) {
+      root.shortcutBusy = false
+      root.shortcutMessage = "Could not read Hyprland's shortcuts."
+      return
+    }
+    var list = ShortcutModel.bindings(text)
+    var conflict = ShortcutModel.conflict(list, ShortcutModel.parse(root.shortcutCandidate))
+    if (conflict) {
+      root.shortcutBusy = false
+      root.shortcutMessage = root.shortcutCandidate + " is already assigned to "
+        + (conflict.description || "another action") + "."
+      return
+    }
+    shortcutRegisterProc.command = ["hyprctl", "eval",
+      ShortcutModel.registerCode(list, root.shortcutRegistered, root.shortcutCandidate, root.shortcutOwner)]
+    shortcutRegisterProc.running = true
+  }
+
+  function savePrefs() {
+    prefsView.setText(JSON.stringify({
+      handle: root.handle,
+      pds: root.pds,
+      shortcut: root.shortcut
+    }))
+  }
+
+  onShortcutChanged: shortcutApplyLater.restart()
+
+  Component.onDestruction: {
+    if (root.shortcutRegistered)
+      Quickshell.execDetached(["hyprctl", "eval",
+        ShortcutModel.releaseCode(root.shortcutRegistered, root.shortcutOwner)])
+  }
 
   // ---- upload pipeline scratch state -----------------------------------------
   property var uploadQueue: []
@@ -209,7 +271,7 @@ Item {
       root.appPassword = password
       root.applySession(tokens)
       writeFileProc.writeSecret("app-password", password, null)
-      prefsView.setText(JSON.stringify({ handle: handle, pds: pdsUrl }))
+      root.savePrefs()
       setup.statusText = ""
       root.setupMode = false
       root.flash("Signed in as @" + tokens.handle, false)
@@ -661,6 +723,61 @@ Item {
     command: ["true"]
   }
 
+  // ---- global shortcut processes --------------------------------------------
+
+  Process {
+    id: shortcutBindsProc
+    command: ["hyprctl", "binds"]
+    stdout: StdioCollector {
+      id: shortcutBindsOut
+      waitForEnd: true
+    }
+    onExited: function(code) {
+      root.checkShortcutBindings(shortcutBindsOut.text, code)
+    }
+  }
+
+  Process {
+    id: shortcutRegisterProc
+    command: ["true"]
+    stdout: StdioCollector {
+      id: shortcutRegisterOut
+      waitForEnd: true
+    }
+    onExited: function(code) {
+      root.shortcutBusy = false
+      if (code !== 0 || shortcutRegisterOut.text.trim() !== "ok") {
+        root.shortcutMessage = "Could not apply the shortcut. Check your Hyprland configuration."
+        return
+      }
+      root.shortcutRegistered = root.shortcutCandidate
+      root.shortcutOk = true
+      if (root.shortcutPersist) {
+        root.shortcutMessage = root.shortcutCandidate ? "Shortcut saved." : "Shortcut disabled."
+        root.shortcut = root.shortcutCandidate
+        root.savePrefs()
+      } else {
+        root.shortcutMessage = ""
+      }
+    }
+  }
+
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      if (event.name === "configreloaded") shortcutApplyLater.restart()
+    }
+  }
+
+  Timer {
+    id: shortcutApplyLater
+    interval: 250
+    onTriggered: {
+      if (root.shortcutBusy) restart()
+      else root.applyShortcut(root.shortcut, false)
+    }
+  }
+
   // ---- persisted state -------------------------------------------------------------------------
 
   FileView {
@@ -672,6 +789,7 @@ Item {
         if (data && typeof data === "object") {
           root.handle = String(data.handle || "")
           root.pds = Api.pdsRoot(data.pds || "")
+          root.shortcut = String(data.shortcut || ShortcutModel.DEFAULT)
         }
       } catch (e) {}
     }
@@ -827,6 +945,11 @@ Item {
           currentHandle: root.handle
           currentPassword: root.appPassword
           currentPds: root.pds
+          shortcutValue: root.shortcut
+          shortcutBusy: root.shortcutBusy
+          shortcutOk: root.shortcutOk
+          shortcutMessage: root.shortcutMessage
+          onShortcutApply: function(value) { root.applyShortcut(value, true) }
           onSaved: function(handle, password, pds) { root.saveCredentials(handle, password, pds) }
           onBackRequested: {
             root.setupMode = false

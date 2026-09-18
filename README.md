@@ -40,14 +40,16 @@ secret files `0600`), never in `shell.json`.
 
 ## Global shortcut
 
-Plugins cannot edit Hyprland config themselves, so add one line to
-`~/.config/hypr/bindings.lua`:
+The composer opens with a global shortcut — **SUPER + B** by default. The
+plugin registers it with Hyprland at runtime (via `hyprctl eval`), so no
+manual binding is needed; it is re-applied whenever the shell starts or
+Hyprland reloads its config.
 
-```lua
-o.bind("SUPER + B", "Post to Bluesky", "omarchy-shell shell toggle thenitai.bsky")
-```
-
-Pick any free combo you like.
+Change it in the plugin's **Settings** view: type a combo like
+`SUPER + SHIFT + P` and hit *Apply*. Combos already assigned to another
+Hyprland action are rejected with the conflicting action's name, and
+leaving the field empty disables the shortcut. The choice persists across
+restarts.
 
 ## Keyboard
 
