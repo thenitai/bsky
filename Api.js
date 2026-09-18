@@ -17,10 +17,17 @@ function pdsRoot(pds) {
 }
 
 function errorText(status, json, fallback) {
-  if (json && json.message) return { message: String(json.message), status: status }
-  if (json && json.error) return { message: String(json.error), status: status }
-  if (status) return { message: fallback + " (HTTP " + status + ")", status: status }
-  return { message: fallback, status: 0 }
+  var code = json && json.error ? String(json.error) : ""
+  if (json && json.message) return { message: String(json.message), status: status, code: code }
+  if (code) return { message: code, status: status, code: code }
+  if (status) return { message: fallback + " (HTTP " + status + ")", status: status, code: "" }
+  return { message: fallback, status: 0, code: "" }
+}
+
+function isAuthError(err) {
+  if (!err) return false
+  if (err.status === 401 || err.status === 403) return true
+  return err.code === "ExpiredToken" || err.code === "InvalidToken" || err.code === "AuthenticationRequired"
 }
 
 // Generic request. cb(status, json, err, rawText) — err is {message, status} or null.

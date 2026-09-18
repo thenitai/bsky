@@ -46,6 +46,11 @@ Item {
   property bool storageReady: false
   property bool setupMode: false
   property bool savingSetup: false
+  property bool openingSession: false
+  property bool sessionValidationPending: false
+  property bool prefsLoaded: false
+  property bool sessionLoaded: false
+  property bool passwordLoaded: false
   property string handle: ""
   property string pds: Api.DEFAULT_PDS
   property string appPassword: ""
@@ -158,7 +163,9 @@ Item {
   function open(payloadJson) {
     root.applyFocusedScreen()
     root.opened = true
+    root.sessionValidationPending = true
     if (root.configured && imageModel.count === 0) root.grabClipboardImage(false)
+    root.maybeValidateSession()
     Qt.callLater(root.focusDefault)
   }
 
@@ -284,14 +291,16 @@ Item {
     setup.statusError = true
   }
 
-  function applySession(tokens) {
+  function applySession(tokens, cb) {
     root.session = tokens
     writeFileProc.writeSecret("session.json", JSON.stringify({
       accessJwt: tokens.accessJwt,
       refreshJwt: tokens.refreshJwt,
       did: tokens.did,
       handle: tokens.handle
-    }), null)
+    }), function(code) {
+      if (cb) cb(code === 0 ? null : { message: "Could not save the Bluesky session", status: 0, code: "" })
+    })
   }
 
   function ensureSession(cb) {
@@ -304,17 +313,38 @@ Item {
       return cb({ message: "Not signed in", status: 0 })
     Api.createSession(root.pds, root.handle, root.appPassword, function(err, tokens) {
       if (err) return cb(err)
-      root.applySession(tokens)
-      cb(null)
+      root.applySession(tokens, cb)
     })
   }
 
   function refreshTokens(cb) {
     if (!root.session || !root.session.refreshJwt) return root.doLogin(cb)
     Api.refreshSession(root.pds, root.session.refreshJwt, function(err, tokens) {
-      if (err) return root.doLogin(cb)
-      root.applySession(tokens)
-      cb(null)
+      if (err) {
+        if (Api.isAuthError(err)) return root.doLogin(cb)
+        return cb(err)
+      }
+      root.applySession(tokens, cb)
+    })
+  }
+
+  function maybeValidateSession() {
+    if (!root.opened || !root.sessionValidationPending || !root.prefsLoaded || !root.sessionLoaded || !root.passwordLoaded) return
+    root.sessionValidationPending = false
+    if (!root.configured) return
+    root.openingSession = true
+    root.refreshTokens(function(err) {
+      root.openingSession = false
+      if (!err) return
+      if (Api.isAuthError(err)) {
+        root.setupMode = true
+        root.clearStatus()
+        setup.statusText = "Your Bluesky session expired. Sign in again."
+        setup.statusError = true
+        if (root.opened) Qt.callLater(root.focusDefault)
+        return
+      }
+      root.flash(err.message || "Could not validate the Bluesky session", true)
     })
   }
 
@@ -416,7 +446,7 @@ Item {
   }
 
   function startPost() {
-    if (root.sending) return
+    if (root.sending || root.openingSession) return
     if (!root.configured) {
       root.setupMode = true
       flash("Sign in first", true)
@@ -792,6 +822,8 @@ Item {
           root.shortcut = String(data.shortcut || ShortcutModel.DEFAULT)
         }
       } catch (e) {}
+      root.prefsLoaded = true
+      root.maybeValidateSession()
     }
   }
 
@@ -804,13 +836,19 @@ Item {
         if (data && data.accessJwt && data.refreshJwt && data.did)
           root.session = { accessJwt: data.accessJwt, refreshJwt: data.refreshJwt, did: data.did, handle: data.handle || root.handle }
       } catch (e) {}
+      root.sessionLoaded = true
+      root.maybeValidateSession()
     }
   }
 
   FileView {
     id: passwordView
     path: root.storageReady ? root.stateDir + "/app-password" : ""
-    onLoaded: root.appPassword = (text() || "").trim()
+    onLoaded: {
+      root.appPassword = (text() || "").trim()
+      root.passwordLoaded = true
+      root.maybeValidateSession()
+    }
   }
 
   // Hashes of images from the most recent successful post, so reopening
@@ -972,6 +1010,7 @@ Item {
           quoteRef: root.quoteRef
           linkCard: root.linkCard
           sending: root.sending
+          checkingSession: root.openingSession
           foreground: root.foreground
           errorColor: root.errorColor
           fontFamily: root.fontFamily

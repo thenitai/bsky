@@ -17,6 +17,7 @@ Column {
   property var quoteRef: null
   property var linkCard: null
   property bool sending: false
+  property bool checkingSession: false
 
   property color foreground: Color.menu.text
   property color errorColor: Color.urgent
@@ -50,7 +51,7 @@ Column {
   }
   readonly property bool linkCardAvailable: cardUrl !== "" && !replyRef && !quoteRef
     && (!imageModel || imageModel.count === 0) && !linkCard
-  readonly property bool canPost: !sending && !overLimit
+  readonly property bool canPost: !sending && !checkingSession && !overLimit
     && (textArea.text.trim() !== "" || (imageModel && imageModel.count > 0))
 
   function insertClipboardText(t) {
@@ -365,7 +366,7 @@ Column {
       Button {
         id: postButton
         height: c.footerHeight
-        text: c.sending ? "Sending…" : "Post"
+        text: c.checkingSession ? "Checking…" : (c.sending ? "Sending…" : "Post")
         selected: true
         enabled: c.canPost
         onClicked: c.postRequested()

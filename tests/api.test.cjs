@@ -7,7 +7,7 @@ const path = require("path")
 let src = fs.readFileSync(path.join(__dirname, "..", "Api.js"), "utf8")
 src = src.replace(/\.pragma library\n/, "")
 global.XMLHttpRequest = function () { throw new Error("no xhr in tests") }
-const Api = eval("(function(){" + src + "; return {DEFAULT_PDS, APPVIEW, MAX_GRAPHEMES, MAX_IMAGES, MAX_URLS, MAX_IMAGE_BYTES, pdsRoot, errorText, findPostUrl, atUriFor, extractUrls, extractMentions, mentionHandles, extractTags, spanOverlaps, byteOffsets, buildFacets, buildRecord, imagesEmbed, recordEmbed, recordWithMediaEmbed, externalEmbed, graphemeCount, validate, looksLikeAppPassword, decodeEntities, parseOgTags, hostOf, resolveUrl}})()")
+const Api = eval("(function(){" + src + "; return {DEFAULT_PDS, APPVIEW, MAX_GRAPHEMES, MAX_IMAGES, MAX_URLS, MAX_IMAGE_BYTES, pdsRoot, errorText, isAuthError, findPostUrl, atUriFor, extractUrls, extractMentions, mentionHandles, extractTags, spanOverlaps, byteOffsets, buildFacets, buildRecord, imagesEmbed, recordEmbed, recordWithMediaEmbed, externalEmbed, graphemeCount, validate, looksLikeAppPassword, decodeEntities, parseOgTags, hostOf, resolveUrl}})()")
 
 let failed = 0
 function eq(name, got, want) {
@@ -19,6 +19,14 @@ function eq(name, got, want) {
 // pdsRoot
 eq("pdsRoot default", Api.pdsRoot(""), "https://bsky.social")
 eq("pdsRoot slash", Api.pdsRoot("https://pds.example.com/"), "https://pds.example.com")
+
+// API errors retain machine-readable codes so auth failures can be routed.
+eq("errorText code", Api.errorText(400, { error: "ExpiredToken", message: "Token has expired" }, "failed"),
+  { message: "Token has expired", status: 400, code: "ExpiredToken" })
+eq("auth error expired token", Api.isAuthError({ status: 400, code: "ExpiredToken" }), true)
+eq("auth error unauthorized", Api.isAuthError({ status: 401, code: "" }), true)
+eq("auth error network", Api.isAuthError({ status: 0, code: "" }), false)
+eq("auth error server", Api.isAuthError({ status: 500, code: "" }), false)
 
 // byteOffsets: "ab é 😀 cd" → a(1)b(1)' '(1)é(2)' '(1)😀(4)' '(1)c(1)d(1) = 13 bytes
 // indices:      a=0 b=1 ' '=2 é=3 ' '=4 😀=5 ' '=6 c=7 d=8
