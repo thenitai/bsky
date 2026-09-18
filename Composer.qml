@@ -10,6 +10,8 @@ import "Api.js" as Api
 Column {
   id: c
 
+  spacing: c.contentSpacing
+
   property var imageModel: null
   property var replyRef: null
   property var quoteRef: null
@@ -19,7 +21,8 @@ Column {
   property color foreground: Color.menu.text
   property color errorColor: Color.urgent
   property string fontFamily: Style.font.menuFamily
-  property int contentSpacing: Style.spacing.md
+  property int contentSpacing: Style.space(14)
+  readonly property int footerHeight: Style.space(32)
 
   signal postRequested()
   signal pasteRequested()
@@ -62,7 +65,7 @@ Column {
   TextArea {
     id: textArea
     width: parent.width
-    height: Style.space(104)
+    height: Style.space(120)
     enabled: !c.sending
     wrapMode: TextEdit.Wrap
     clip: true
@@ -94,16 +97,6 @@ Column {
         event.accepted = true
       }
     }
-  }
-
-  Text {
-    width: parent.width
-    horizontalAlignment: Text.AlignRight
-    text: c.overLimit ? (c.remaining + " over limit") : (c.remaining + " left")
-    color: c.overLimit ? c.errorColor : c.foreground
-    opacity: c.overLimit ? 1 : 0.55
-    font.family: c.fontFamily
-    font.pixelSize: Style.font.caption
   }
 
   // ---- attached images ----------------------------------------------------
@@ -233,14 +226,17 @@ Column {
 
   Row {
     width: parent.width
+    height: c.footerHeight
     spacing: c.contentSpacing
 
     Row {
       id: actionButtons
+      height: parent.height
       spacing: Style.space(6)
 
       Button {
         text: "Paste image"
+        height: parent.height
         enabled: !c.sending && (!c.imageModel || c.imageModel.count < Api.MAX_IMAGES)
         tooltipText: "Ctrl+V also works"
         onClicked: c.pasteRequested()
@@ -249,6 +245,7 @@ Column {
       Button {
         visible: c.postUrl && !c.replyRef
         text: "Reply"
+        height: parent.height
         enabled: !c.sending
         tooltipText: "Reply to the bsky.app post in your text"
         onClicked: c.replyRequested()
@@ -257,6 +254,7 @@ Column {
       Button {
         visible: c.postUrl && !c.quoteRef
         text: "Quote"
+        height: parent.height
         enabled: !c.sending
         tooltipText: "Quote the bsky.app post in your text"
         onClicked: c.quoteRequested()
@@ -266,6 +264,7 @@ Column {
         visible: c.replyRef !== null
         selected: true
         text: "Replying to @" + (c.replyRef ? c.replyRef.handle : "")
+        height: parent.height
         enabled: !c.sending
         onClicked: c.clearReplyRequested()
       }
@@ -274,6 +273,7 @@ Column {
         visible: c.quoteRef !== null
         selected: true
         text: "Quoting @" + (c.quoteRef ? c.quoteRef.handle : "")
+        height: parent.height
         enabled: !c.sending
         onClicked: c.clearQuoteRequested()
       }
@@ -281,6 +281,7 @@ Column {
       Button {
         visible: c.linkCardAvailable
         text: "Link card"
+        height: parent.height
         enabled: !c.sending
         tooltipText: "Attach an OpenGraph card for the pasted link"
         onClicked: c.linkCardRequested()
@@ -294,6 +295,7 @@ Column {
 
     Row {
       id: rightControls
+      height: parent.height
       spacing: c.contentSpacing
 
       Text {
@@ -307,6 +309,7 @@ Column {
 
       Button {
         id: postButton
+        height: parent.height
         text: c.sending ? "Sending…" : "Post"
         selected: true
         enabled: c.canPost

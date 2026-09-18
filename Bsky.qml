@@ -29,8 +29,8 @@ Item {
   property color errorColor: Color.urgent
   readonly property int cornerRadius: Style.cornerRadius
   property string fontFamily: Style.font.menuFamily
-  property int contentMargin: Style.spacing.panelPadding
-  property int contentSpacing: Style.spacing.md
+  property int contentMargin: Style.space(20)
+  property int contentSpacing: Style.space(14)
   property int cardWidth: Math.min(Style.space(600), panel.width - Style.gapsOut * 2)
   property int cardMaxHeight: Math.max(Style.space(200), panel.height - Style.gapsOut * 2)
 
@@ -91,7 +91,7 @@ Item {
   function open(payloadJson) {
     root.applyFocusedScreen()
     root.opened = true
-    if (root.configured && root.imageModel.count === 0) root.grabClipboardImage(false)
+    if (root.configured && imageModel.count === 0) root.grabClipboardImage(false)
     Qt.callLater(root.focusDefault)
   }
 
@@ -137,7 +137,7 @@ Item {
   // ---- clipboard image -----------------------------------------------------------
 
   function grabClipboardImage(manual) {
-    if (root.imageModel.count >= Api.MAX_IMAGES) {
+    if (imageModel.count >= Api.MAX_IMAGES) {
       if (manual) flash("Bluesky allows up to " + Api.MAX_IMAGES + " images", true)
       return
     }
@@ -199,6 +199,7 @@ Item {
       root.pds = pdsUrl
       root.appPassword = password
       root.applySession(tokens)
+      writeFileProc.writeSecret("app-password", password, null)
       prefsView.setText(JSON.stringify({ handle: handle, pds: pdsUrl }))
       setup.statusText = ""
       root.setupMode = false
@@ -488,11 +489,12 @@ Item {
     }
   }
 
-  // Generic 0600 secret writer (session tokens, app password).
+  // Generic 0600 secret writer (session tokens, app password). Queued.
   Process {
     id: writeFileProc
     property string payload: ""
     property var onDone: null
+    property var writeQueue: []
     stdinEnabled: true
     onStarted: {
       write(payload)
@@ -503,10 +505,12 @@ Item {
       var f = onDone
       onDone = null
       if (f) f(code)
+      var next = writeQueue.shift()
+      if (next) writeSecret(next.file, next.content, next.cb)
     }
     function writeSecret(fileName, content, cb) {
       if (running) {
-        if (cb) cb(1)
+        writeQueue.push({ file: fileName, content: content, cb: cb })
         return
       }
       payload = content
@@ -683,9 +687,9 @@ Item {
     asynchronous: true
     onStatusChanged: {
       if (status !== Image.Ready && status !== Image.Error) return
-      if (status === Image.Ready && root.dimProbeIndex >= 0 && root.dimProbeIndex < root.imageModel.count) {
-        root.imageModel.setProperty(root.dimProbeIndex, "aspectWidth", sourceSize.width)
-        root.imageModel.setProperty(root.dimProbeIndex, "aspectHeight", sourceSize.height)
+      if (status === Image.Ready && root.dimProbeIndex >= 0 && root.dimProbeIndex < imageModel.count) {
+        imageModel.setProperty(root.dimProbeIndex, "aspectWidth", sourceSize.width)
+        imageModel.setProperty(root.dimProbeIndex, "aspectHeight", sourceSize.height)
       }
       root.dimProbePath = ""
       root.dimProbeIndex = -1
@@ -757,11 +761,15 @@ Item {
         spacing: root.contentSpacing
 
         Row {
+          id: headerRow
           width: parent.width
           spacing: root.contentSpacing
+          visible: root.configured
 
           Text {
+            id: headerTitle
             y: (parent.height - height) / 2
+            visible: !root.setupMode
             text: "Bluesky"
             color: root.foreground
             font.family: root.fontFamily
@@ -770,14 +778,17 @@ Item {
           }
 
           Item {
-            width: Math.max(0, parent.width - accountLabel.width - settingsButton.width - 2 * parent.spacing)
+            width: Math.max(0, parent.width
+              - (headerTitle.visible ? headerTitle.width + parent.spacing : 0)
+              - (accountLabel.visible ? accountLabel.width + parent.spacing : 0)
+              - settingsButton.width)
             height: 1
           }
 
           Text {
             id: accountLabel
             y: (parent.height - height) / 2
-            visible: root.configured && !root.setupMode
+            visible: !root.setupMode
             text: "@" + root.handle
             color: root.foreground
             opacity: 0.55
@@ -788,7 +799,6 @@ Item {
           Button {
             id: settingsButton
             y: (parent.height - height) / 2
-            visible: root.configured
             text: root.setupMode ? "Back" : "Settings"
             enabled: !root.savingSetup && !root.sending
             onClicked: {

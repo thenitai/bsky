@@ -8,10 +8,12 @@ import qs.Ui
 Column {
   id: setup
 
+  spacing: Style.space(16)
+
   property color foreground: Color.menu.text
   property color errorColor: Color.urgent
   property string fontFamily: Style.font.menuFamily
-  property int contentSpacing: Style.spacing.md
+  property int contentSpacing: Style.space(16)
   property bool busy: false
   property string statusText: ""
   property bool statusError: false
@@ -31,16 +33,6 @@ Column {
     font.family: setup.fontFamily
     font.pixelSize: Style.font.heading
     font.bold: true
-  }
-
-  Text {
-    width: parent.width
-    text: "Use an app password, not your main one.\nbsky.app → Settings → App passwords"
-    color: setup.foreground
-    opacity: 0.62
-    font.family: setup.fontFamily
-    font.pixelSize: Style.font.caption
-    wrapMode: Text.WordWrap
   }
 
   TextField {
