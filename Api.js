@@ -79,20 +79,6 @@ function createSession(pds, identifier, password, cb) {
   })
 }
 
-function refreshSession(pds, refreshJwt, cb) {
-  request({
-    url: pdsRoot(pds) + "/xrpc/com.atproto.server.refreshSession",
-    method: "POST",
-    timeoutMs: 15000,
-    headers: { "Authorization": "Bearer " + refreshJwt }
-  }, function(status, json, err) {
-    if (err) return cb(err)
-    if (status === 200 && json && json.accessJwt)
-      return cb(null, { accessJwt: json.accessJwt, refreshJwt: json.refreshJwt, did: json.did, handle: json.handle })
-    cb(errorText(status, json, "session refresh failed"))
-  })
-}
-
 function createRecord(pds, token, did, record, cb) {
   request({
     url: pdsRoot(pds) + "/xrpc/com.atproto.repo.createRecord",

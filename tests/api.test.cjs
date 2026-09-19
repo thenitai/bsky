@@ -7,7 +7,7 @@ const path = require("path")
 let src = fs.readFileSync(path.join(__dirname, "..", "Api.js"), "utf8")
 src = src.replace(/\.pragma library\n/, "")
 global.XMLHttpRequest = function () { throw new Error("no xhr in tests") }
-const Api = eval("(function(){" + src + "; return {DEFAULT_PDS, APPVIEW, MAX_GRAPHEMES, MAX_IMAGES, MAX_URLS, MAX_IMAGE_BYTES, pdsRoot, errorText, isAuthError, request, createSession, refreshSession, createRecord, findPostUrl, atUriFor, extractUrls, extractMentions, mentionHandles, extractTags, spanOverlaps, byteOffsets, buildFacets, buildRecord, imagesEmbed, recordEmbed, recordWithMediaEmbed, externalEmbed, graphemeCount, validate, looksLikeAppPassword, decodeEntities, parseOgTags, hostOf, resolveUrl}})()")
+const Api = eval("(function(){" + src + "; return {DEFAULT_PDS, APPVIEW, MAX_GRAPHEMES, MAX_IMAGES, MAX_URLS, MAX_IMAGE_BYTES, pdsRoot, errorText, isAuthError, request, createSession, createRecord, findPostUrl, atUriFor, extractUrls, extractMentions, mentionHandles, extractTags, spanOverlaps, byteOffsets, buildFacets, buildRecord, imagesEmbed, recordEmbed, recordWithMediaEmbed, externalEmbed, graphemeCount, validate, looksLikeAppPassword, decodeEntities, parseOgTags, hostOf, resolveUrl}})()")
 
 let failed = 0
 function eq(name, got, want) {
@@ -30,12 +30,6 @@ function captureRequest(run) {
   run()
   return xhr
 }
-
-// Request transport: AT Protocol no-input procedures must receive no body at
-// all, while procedures with JSON input must still receive their serialized body.
-const refreshXhr = captureRequest(() => Api.refreshSession("https://bsky.social", "refresh-token", () => {}))
-eq("refresh sends no body argument", refreshXhr.sendArgs.length, 0)
-eq("refresh keeps bearer token", refreshXhr.headers.Authorization, "Bearer refresh-token")
 
 const loginXhr = captureRequest(() => Api.createSession("https://bsky.social", "alice.test", "app-password", () => {}))
 eq("login sends one body argument", loginXhr.sendArgs.length, 1)

@@ -13,6 +13,7 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     text: "\ue671"
+    fontFamily: "Font Awesome 7 Brands"
     tooltipText: "Bluesky composer"
     onPressed: function(mouseButton) {
       if (mouseButton !== Qt.LeftButton || !root.bar || !root.bar.shell) return

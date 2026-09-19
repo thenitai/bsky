@@ -319,7 +319,7 @@ Item {
 
   function refreshTokens(cb) {
     if (!root.session || !root.session.refreshJwt) return root.doLogin(cb)
-    Api.refreshSession(root.pds, root.session.refreshJwt, function(err, tokens) {
+    refreshSessionProc.start(function(err, tokens) {
       if (err) {
         if (Api.isAuthError(err)) return root.doLogin(cb)
         return cb(err)
@@ -627,6 +627,47 @@ Item {
       command = ["sh", "-c",
         "umask 077; cat > \"$1.new\" && chmod 600 \"$1.new\" && mv -f \"$1.new\" \"$1\"",
         "bsky-write", root.stateDir + "/" + fileName]
+      running = true
+    }
+  }
+
+  // Refreshes through curl because Qt's XMLHttpRequest sends an empty POST
+  // body even when send() receives no argument. The refresh token stays in the
+  // protected session file and never appears in argv or the environment.
+  Process {
+    id: refreshSessionProc
+    property var cb: null
+    command: ["true"]
+    stdout: StdioCollector {
+      id: refreshSessionOut
+      waitForEnd: true
+    }
+    stderr: StdioCollector {
+      id: refreshSessionErr
+      waitForEnd: true
+    }
+    onExited: function(code) {
+      var f = refreshSessionProc.cb
+      refreshSessionProc.cb = null
+      if (!f) return
+      if (code === 0) {
+        var json = null
+        try { json = JSON.parse(refreshSessionOut.text) } catch (e) {}
+        if (json && json.accessJwt)
+          return f(null, { accessJwt: json.accessJwt, refreshJwt: json.refreshJwt, did: json.did, handle: json.handle })
+        return f({ message: "Session refresh returned no token", status: 0, code: "" })
+      }
+      var parts = String(refreshSessionErr.text || "").trim().split("|")
+      f({
+        message: parts.slice(2).join("|") || "Session refresh failed",
+        status: parseInt(parts[0], 10) || 0,
+        code: parts[1] || ""
+      })
+    }
+    function start(callback) {
+      if (running) return callback({ message: "Session refresh busy", status: 0, code: "" })
+      refreshSessionProc.cb = callback
+      command = [root.pluginDir + "bin/refresh-session.sh", root.stateDir + "/session.json", Api.pdsRoot(root.pds)]
       running = true
     }
   }
