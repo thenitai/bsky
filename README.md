@@ -27,6 +27,20 @@ a screenshot), Enter. A tiny composer overlay for the Omarchy Quattro shell.
 omarchy plugin add https://github.com/thenitai/bsky.git --enable
 ```
 
+Interactive installation asks whether the butterfly icon belongs in the left,
+center or right bar section. The default is right. Non-interactive installs
+using `--yes` use that default without prompting.
+
+If you installed an older overlay-only release, re-enable it once with the bar
+section you want:
+
+```fish
+omarchy plugin disable thenitai.bsky
+omarchy plugin enable thenitai.bsky --section right
+```
+
+Replace `right` with `left` or `center` as preferred.
+
 ## Setup
 
 1. Create an app password at **bsky.app → Settings → App passwords** (never

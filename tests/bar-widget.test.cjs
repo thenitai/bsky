@@ -14,6 +14,7 @@ function ok(name, value) {
 ok("manifest exposes overlay", manifest.kinds.includes("overlay") && manifest.entryPoints.overlay === "Bsky.qml")
 ok("manifest exposes bar widget", manifest.kinds.includes("bar-widget") && manifest.entryPoints.barWidget === "BarWidget.qml")
 ok("bar widget defaults right", manifest.barWidget.defaultSection === "right")
+ok("bar widget uses Bluesky butterfly", widget.includes('text: "\\ue671"'))
 ok("bar widget toggles composer through shell", widget.includes('root.bar.shell.toggle("thenitai.bsky", "{}")'))
 ok("bar widget only handles left click", widget.includes("mouseButton !== Qt.LeftButton"))
 

@@ -57,7 +57,8 @@ function request(opts, cb) {
     xhr.open(opts.method || "GET", opts.url, true)
     var hs = opts.headers || {}
     for (var k in hs) if (hs[k]) xhr.setRequestHeader(k, hs[k])
-    xhr.send(opts.body ? opts.body : null)
+    if (opts.body === undefined || opts.body === null) xhr.send()
+    else xhr.send(opts.body)
   } catch (e) {
     done(0, null, { message: String(e), status: 0 }, "")
   }

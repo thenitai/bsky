@@ -7,7 +7,7 @@ const path = require("path")
 let src = fs.readFileSync(path.join(__dirname, "..", "Api.js"), "utf8")
 src = src.replace(/\.pragma library\n/, "")
 global.XMLHttpRequest = function () { throw new Error("no xhr in tests") }
-const Api = eval("(function(){" + src + "; return {DEFAULT_PDS, APPVIEW, MAX_GRAPHEMES, MAX_IMAGES, MAX_URLS, MAX_IMAGE_BYTES, pdsRoot, errorText, isAuthError, findPostUrl, atUriFor, extractUrls, extractMentions, mentionHandles, extractTags, spanOverlaps, byteOffsets, buildFacets, buildRecord, imagesEmbed, recordEmbed, recordWithMediaEmbed, externalEmbed, graphemeCount, validate, looksLikeAppPassword, decodeEntities, parseOgTags, hostOf, resolveUrl}})()")
+const Api = eval("(function(){" + src + "; return {DEFAULT_PDS, APPVIEW, MAX_GRAPHEMES, MAX_IMAGES, MAX_URLS, MAX_IMAGE_BYTES, pdsRoot, errorText, isAuthError, request, createSession, refreshSession, createRecord, findPostUrl, atUriFor, extractUrls, extractMentions, mentionHandles, extractTags, spanOverlaps, byteOffsets, buildFacets, buildRecord, imagesEmbed, recordEmbed, recordWithMediaEmbed, externalEmbed, graphemeCount, validate, looksLikeAppPassword, decodeEntities, parseOgTags, hostOf, resolveUrl}})()")
 
 let failed = 0
 function eq(name, got, want) {
@@ -15,6 +15,36 @@ function eq(name, got, want) {
   if (g === w) console.log("PASS", name)
   else { failed++; console.log("FAIL", name, "\n  got: ", g, "\n  want:", w) }
 }
+
+function captureRequest(run) {
+  let xhr
+  function MockXHR() {
+    xhr = this
+    this.headers = {}
+    this.open = (method, url) => { this.method = method; this.url = url }
+    this.setRequestHeader = (name, value) => { this.headers[name] = value }
+    this.send = function () { this.sendArgs = Array.from(arguments) }
+  }
+  MockXHR.DONE = 4
+  global.XMLHttpRequest = MockXHR
+  run()
+  return xhr
+}
+
+// Request transport: AT Protocol no-input procedures must receive no body at
+// all, while procedures with JSON input must still receive their serialized body.
+const refreshXhr = captureRequest(() => Api.refreshSession("https://bsky.social", "refresh-token", () => {}))
+eq("refresh sends no body argument", refreshXhr.sendArgs.length, 0)
+eq("refresh keeps bearer token", refreshXhr.headers.Authorization, "Bearer refresh-token")
+
+const loginXhr = captureRequest(() => Api.createSession("https://bsky.social", "alice.test", "app-password", () => {}))
+eq("login sends one body argument", loginXhr.sendArgs.length, 1)
+eq("login sends JSON body", JSON.parse(loginXhr.sendArgs[0]), { identifier: "alice.test", password: "app-password" })
+
+const record = { $type: "app.bsky.feed.post", text: "hello" }
+const recordXhr = captureRequest(() => Api.createRecord("https://bsky.social", "access-token", "did:plc:alice", record, () => {}))
+eq("record sends one body argument", recordXhr.sendArgs.length, 1)
+eq("record sends JSON body", JSON.parse(recordXhr.sendArgs[0]), { repo: "did:plc:alice", collection: "app.bsky.feed.post", record })
 
 // pdsRoot
 eq("pdsRoot default", Api.pdsRoot(""), "https://bsky.social")
