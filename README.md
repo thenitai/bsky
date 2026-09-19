@@ -7,7 +7,7 @@ a screenshot), Enter. A tiny composer overlay for the Omarchy Quattro shell.
 
 ## Features
 
-- **Global shortcut** composer overlay — summon from any workspace, Esc closes
+- **Bar icon and global shortcut** composer overlay — summon from either, Esc closes
 - **Text posts** with a 300-character grapheme counter, link, `#hashtag` and
   `@mention` facets (clickable on Bluesky)
 - **Clipboard images** — an image on the clipboard is auto-attached when the
@@ -31,7 +31,8 @@ omarchy plugin add https://github.com/thenitai/bsky.git --enable
 
 1. Create an app password at **bsky.app → Settings → App passwords** (never
    use your main password).
-2. Press the composer shortcut — the first run shows the sign-in form.
+2. Click the Bluesky bar icon or press the composer shortcut — the first run
+   shows the sign-in form.
    Enter your handle (e.g. `alice.bsky.social`) and the app password.
 3. Optional: enter a custom PDS URL if your account is not on `bsky.social`.
 
@@ -50,6 +51,11 @@ Change it in the plugin's **Settings** view: type a combo like
 Hyprland action are rejected with the conflicting action's name, and
 leaving the field empty disables the shortcut. The choice persists across
 restarts.
+
+## Bar icon
+
+The Bluesky icon provides a discoverable fallback when the global shortcut is
+disabled or unavailable. Click it to open or close the same composer overlay.
 
 ## Keyboard
 

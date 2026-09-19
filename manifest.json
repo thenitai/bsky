@@ -5,10 +5,18 @@
   "version": "0.1.0",
   "author": "thenitai",
   "license": "MIT",
-  "description": "Post to Bluesky from anywhere — text, screenshots and clipboard images via a global shortcut",
-  "kinds": ["overlay"],
+  "description": "Post to Bluesky from anywhere — text, screenshots and clipboard images from the bar or a global shortcut",
+  "kinds": ["overlay", "bar-widget"],
   "keepLoaded": true,
   "entryPoints": {
-    "overlay": "Bsky.qml"
+    "overlay": "Bsky.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Bluesky composer",
+    "description": "Open the Bluesky composer",
+    "category": "Social",
+    "allowMultiple": false,
+    "defaultSection": "right"
   }
 }
