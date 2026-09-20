@@ -1063,6 +1063,10 @@ Item {
             root.setupMode = true
             Qt.callLater(root.focusDefault)
           }
+          onGoToBlueskyRequested: {
+            root.dismiss()
+            Qt.openUrlExternally("https://bsky.app")
+          }
           onReplyRequested: root.resolveRef("reply")
           onQuoteRequested: root.resolveRef("quote")
           onClearReplyRequested: root.replyRef = null

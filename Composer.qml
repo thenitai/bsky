@@ -29,6 +29,7 @@ Column {
   signal pasteRequested()
   signal dismissRequested()
   signal settingsRequested()
+  signal goToBlueskyRequested()
   signal replyRequested()
   signal quoteRequested()
   signal clearReplyRequested()
@@ -254,23 +255,53 @@ Column {
       id: actionButtons
       anchors.left: parent.left
       anchors.verticalCenter: parent.verticalCenter
-      spacing: Style.space(6)
+      spacing: Style.space(12)
 
-      Text {
-        id: settingsLink
+      Row {
+        id: navigationLinks
         y: (parent.height - height) / 2
-        text: "Settings"
-        color: c.foreground
-        opacity: settingsLinkMouse.containsMouse ? 1 : 0.55
-        font.family: c.fontFamily
-        font.pixelSize: Style.font.caption
+        spacing: Style.space(8)
 
-        MouseArea {
-          id: settingsLinkMouse
-          anchors.fill: parent
-          hoverEnabled: true
-          cursorShape: Qt.PointingHandCursor
-          onClicked: c.settingsRequested()
+        Text {
+          id: settingsLink
+          text: "Settings"
+          color: c.foreground
+          opacity: settingsLinkMouse.containsMouse ? 1 : 0.55
+          font.family: c.fontFamily
+          font.pixelSize: Style.font.caption
+
+          MouseArea {
+            id: settingsLinkMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: c.settingsRequested()
+          }
+        }
+
+        Text {
+          text: "·"
+          color: c.foreground
+          opacity: 0.55
+          font.family: c.fontFamily
+          font.pixelSize: Style.font.caption
+        }
+
+        Text {
+          id: blueskyLink
+          text: "Go to Bluesky"
+          color: c.foreground
+          opacity: blueskyLinkMouse.containsMouse ? 1 : 0.55
+          font.family: c.fontFamily
+          font.pixelSize: Style.font.caption
+
+          MouseArea {
+            id: blueskyLinkMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: c.goToBlueskyRequested()
+          }
         }
       }
 
