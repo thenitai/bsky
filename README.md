@@ -23,6 +23,9 @@ a screenshot), Enter. A tiny composer overlay for the Omarchy Quattro shell.
 
 ## Install
 
+Requires Python 3, coreutils (`timeout`), `wl-paste`, `curl`, and `jq`.
+Optional: `ffmpeg` for GIF/BMP conversion.
+
 ```sh
 omarchy plugin add https://github.com/thenitai/bsky.git --enable
 ```
@@ -88,8 +91,12 @@ Everything goes through the standard AT Protocol XRPC endpoints on your PDS
 (`createSession`, `refreshSession`, `uploadBlob`, `createRecord`) plus
 unauthenticated AppView reads (`getProfile`, `getPostThread`) on
 `public.api.bsky.app` for reply/quote resolution and mention DIDs. The access
-JWT is handed to `curl` through a `0600` temp header file, never through argv
-or the environment.
+JWT reaches subprocesses through stdin or a `0600` temp header file, never
+through argv or the environment. HTTP responses are capped at 256 KiB before
+decoding. Generic requests use Python 3, with a maximum 30-second deadline;
+redirects are not followed. Clipboard reads have a 5-second deadline and caps
+of 64 KiB for text/type lists and 1 MB for images. Image conversion has a
+10-second deadline and a 1 MB output cap. Oversized inputs fail closed.
 
 Limits enforced client-side: 300 graphemes, 4 images, 5 links, images under
 1 MB in JPEG/PNG/WebP.

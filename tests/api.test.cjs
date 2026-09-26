@@ -16,29 +16,16 @@ function eq(name, got, want) {
   else { failed++; console.log("FAIL", name, "\n  got: ", g, "\n  want:", w) }
 }
 
-function captureRequest(run) {
-  let xhr
-  function MockXHR() {
-    xhr = this
-    this.headers = {}
-    this.open = (method, url) => { this.method = method; this.url = url }
-    this.setRequestHeader = (name, value) => { this.headers[name] = value }
-    this.send = function () { this.sendArgs = Array.from(arguments) }
-  }
-  MockXHR.DONE = 4
-  global.XMLHttpRequest = MockXHR
-  run()
-  return xhr
-}
-
-const loginXhr = captureRequest(() => Api.createSession("https://bsky.social", "alice.test", "app-password", () => {}))
-eq("login sends one body argument", loginXhr.sendArgs.length, 1)
-eq("login sends JSON body", JSON.parse(loginXhr.sendArgs[0]), { identifier: "alice.test", password: "app-password" })
-
+let captured
+const transport = (opts, cb) => { captured = opts; cb(200, '{"accessJwt":"access","uri":"at://post"}', '') }
+Api.createSession(transport, "https://bsky.social", "alice.test", "app-password", () => {})
+eq("login sends JSON body", JSON.parse(captured.body), { identifier: "alice.test", password: "app-password" })
 const record = { $type: "app.bsky.feed.post", text: "hello" }
-const recordXhr = captureRequest(() => Api.createRecord("https://bsky.social", "access-token", "did:plc:alice", record, () => {}))
-eq("record sends one body argument", recordXhr.sendArgs.length, 1)
-eq("record sends JSON body", JSON.parse(recordXhr.sendArgs[0]), { repo: "did:plc:alice", collection: "app.bsky.feed.post", record })
+Api.createRecord(transport, "https://bsky.social", "access-token", "did:plc:alice", record, () => {})
+eq("record sends JSON body", JSON.parse(captured.body), { repo: "did:plc:alice", collection: "app.bsky.feed.post", record })
+let failure
+Api.request({ transport: (opts, cb) => cb(0, "", "HTTP response exceeded 262144 bytes") }, (status, json, err) => { failure = err })
+eq("transport failure reaches caller", failure, { message: "HTTP response exceeded 262144 bytes", status: 0 })
 
 // pdsRoot
 eq("pdsRoot default", Api.pdsRoot(""), "https://bsky.social")

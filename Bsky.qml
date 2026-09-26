@@ -270,7 +270,7 @@ Item {
     setup.statusText = "Verifying…"
     setup.statusError = false
     var pdsUrl = Api.pdsRoot(pds || Api.DEFAULT_PDS)
-    Api.createSession(pdsUrl, handle, password, function(err, tokens) {
+    Api.createSession(root.requestHttp, pdsUrl, handle, password, function(err, tokens) {
       root.savingSetup = false
       if (err) return setupError(err.message || "Login failed")
       root.handle = handle
@@ -311,7 +311,7 @@ Item {
   function doLogin(cb) {
     if (!root.handle || !root.appPassword)
       return cb({ message: "Not signed in", status: 0 })
-    Api.createSession(root.pds, root.handle, root.appPassword, function(err, tokens) {
+    Api.createSession(root.requestHttp, root.pds, root.handle, root.appPassword, function(err, tokens) {
       if (err) return cb(err)
       root.applySession(tokens, cb)
     })
@@ -387,12 +387,12 @@ Item {
     }
     var loadThread = function(err, atUri) {
       if (err) return finish(err, null)
-      Api.getPostThread(atUri, finish)
+      Api.getPostThread(root.requestHttp, atUri, finish)
     }
-    if (info.atUri) return Api.getPostThread(info.atUri, finish)
+    if (info.atUri) return Api.getPostThread(root.requestHttp, info.atUri, finish)
     if (String(info.actor).indexOf("did:") === 0)
       return loadThread(null, Api.atUriFor(info.actor, info.rkey))
-    Api.getProfile(info.actor, function(err, prof) {
+    Api.getProfile(root.requestHttp, info.actor, function(err, prof) {
       if (err) return finish(err, null)
       loadThread(null, Api.atUriFor(prof.did, info.rkey))
     })
@@ -405,7 +405,7 @@ Item {
     if (!url) return
     if (root.linkCard) return
     root.setStatus("Fetching link card…")
-    Api.fetchText(url, function(status, err, html) {
+    Api.fetchText(root.requestHttp, url, function(status, err, html) {
       var og = html ? Api.parseOgTags(html) : { title: "", description: "", image: "" }
       root.linkCard = {
         uri: url,
@@ -486,7 +486,7 @@ Item {
       if (idx >= handles.length) return cb(null, didMap)
       var h = handles[idx++]
       root.setStatus("Resolving @" + h + "…")
-      Api.getProfile(h, function(err, prof) {
+      Api.getProfile(root.requestHttp, h, function(err, prof) {
         if (err) return cb({ message: "Mention lookup failed for @" + h, status: err.status || 0 })
         didMap[h.toLowerCase()] = prof.did
         next()
@@ -539,7 +539,7 @@ Item {
       opts.embed = Api.externalEmbed(root.linkCard.uri, root.linkCard.title, root.linkCard.description, root.linkCard.blob)
     var record = Api.buildRecord(opts)
     root.authedCall(function(token, done) {
-      Api.createRecord(root.pds, token, root.session.did, record, function(err, uri) {
+      Api.createRecord(root.requestHttp, root.pds, token, root.session.did, record, function(err, uri) {
         done(err, uri)
       })
     }, function(err, uri) {
@@ -582,6 +582,35 @@ Item {
     root.clearLinkCard()
     root.clearStatus()
     root.dismiss()
+  }
+
+  function requestHttp(opts, callback) {
+    var proc = httpRequest.createObject(root, { options: opts, callback: callback })
+    proc.running = true
+  }
+
+  Component {
+    id: httpRequest
+    Process {
+      property var options
+      property var callback
+      command: ["timeout", "--kill-after=1", String(Math.min(options.timeoutMs || 15000, 30000) / 1000), "python3", root.pluginDir + "bin/request.py"]
+      stdinEnabled: true
+      onStarted: {
+        write(JSON.stringify(options))
+        stdinEnabled = false
+      }
+      stdout: StdioCollector { id: httpOutput; waitForEnd: true }
+      onExited: function(code) {
+        var result = null
+        try { result = JSON.parse(httpOutput.text) } catch (e) {}
+        var done = callback
+        callback = null
+        if (code === 0 && result) done(result.status, result.text, result.error || "")
+        else done(0, "", "Network request failed or timed out")
+        destroy()
+      }
+    }
   }
 
   // ---- processes ---------------------------------------------------------------------------
@@ -698,14 +727,14 @@ Item {
   Process {
     id: pasteTextProc
     property bool manual: false
-    command: ["sh", "-c", "wl-paste --type text 2>/dev/null || true"]
+    command: [root.pluginDir + "bin/grab-image.sh", "text"]
     stdout: StdioCollector {
       id: pasteOut
       waitForEnd: true
     }
     onExited: function(code) {
       var t = pasteOut.text
-      if (t) {
+      if (code === 0 && t) {
         composer.insertClipboardText(t)
       } else if (pasteTextProc.manual) {
         root.flash("Nothing to paste", true)

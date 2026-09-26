@@ -32,40 +32,18 @@ function isAuthError(err) {
 
 // Generic request. cb(status, json, err, rawText) — err is {message, status} or null.
 function request(opts, cb) {
-  var xhr = new XMLHttpRequest()
-  var settled = false
-  function done(status, json, err, raw) {
-    if (settled) return
-    settled = true
-    cb(status, json, err, raw)
-  }
-  xhr.timeout = opts.timeoutMs || 15000
-  xhr.ontimeout = function() { done(0, null, { message: "network timeout", status: 0 }, "") }
-  xhr.onerror = function() { done(0, null, { message: "network error", status: 0 }, "") }
-  xhr.onabort = function() { done(0, null, { message: "aborted", status: 0 }, "") }
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState !== XMLHttpRequest.DONE) return
-    var status = xhr.status
-    var text = xhr.responseText || ""
+  opts.transport(opts, function(status, text, failure) {
     var json = null
     if (text) {
       try { json = JSON.parse(text) } catch (e) { json = null }
     }
-    done(status, json, null, text)
-  }
-  try {
-    xhr.open(opts.method || "GET", opts.url, true)
-    var hs = opts.headers || {}
-    for (var k in hs) if (hs[k]) xhr.setRequestHeader(k, hs[k])
-    if (opts.body === undefined || opts.body === null) xhr.send()
-    else xhr.send(opts.body)
-  } catch (e) {
-    done(0, null, { message: String(e), status: 0 }, "")
-  }
+    cb(status, json, failure ? { message: failure, status: 0 } : null, text)
+  })
 }
 
-function createSession(pds, identifier, password, cb) {
+function createSession(transport, pds, identifier, password, cb) {
   request({
+    transport: transport,
     url: pdsRoot(pds) + "/xrpc/com.atproto.server.createSession",
     method: "POST",
     timeoutMs: 15000,
@@ -79,8 +57,9 @@ function createSession(pds, identifier, password, cb) {
   })
 }
 
-function createRecord(pds, token, did, record, cb) {
+function createRecord(transport, pds, token, did, record, cb) {
   request({
+    transport: transport,
     url: pdsRoot(pds) + "/xrpc/com.atproto.repo.createRecord",
     method: "POST",
     timeoutMs: 20000,
@@ -95,8 +74,9 @@ function createRecord(pds, token, did, record, cb) {
 
 // AppView reads below work unauthenticated for public data.
 
-function getProfile(actor, cb) {
+function getProfile(transport, actor, cb) {
   request({
+    transport: transport,
     url: APPVIEW + "/xrpc/app.bsky.actor.getProfile?actor=" + encodeURIComponent(actor),
     method: "GET",
     timeoutMs: 12000
@@ -108,8 +88,9 @@ function getProfile(actor, cb) {
   })
 }
 
-function getPostThread(atUri, cb) {
+function getPostThread(transport, atUri, cb) {
   request({
+    transport: transport,
     url: APPVIEW + "/xrpc/app.bsky.feed.getPostThread?uri=" + encodeURIComponent(atUri),
     method: "GET",
     timeoutMs: 12000
@@ -124,8 +105,9 @@ function getPostThread(atUri, cb) {
 }
 
 // Fetches a page as text (for OpenGraph parsing). cb(status, err, rawText)
-function fetchText(url, cb) {
+function fetchText(transport, url, cb) {
   request({
+    transport: transport,
     url: url,
     method: "GET",
     timeoutMs: 12000,
