@@ -1,43 +1,17 @@
 #!/bin/bash
-
-# Downloads a remote image (e.g. og:image for a link card) to a temp file and
-# converts it to an embed-allowed mime type via ffmpeg when needed.
-#
-# Usage: fetch-image.sh <url>
-# stdout: "<mime>\t<path>\t<size>"   exit 1 on failure.
-
+# Download public PNG/JPEG/WebP thumbnails only; no remote image conversion.
 set -euo pipefail
+umask 077
+tmp=$(mktemp /tmp/omarchy-bsky-card.XXXXXX)
+trap 'rm -f "$tmp"' EXIT
 
-url="$1"
-tmp=$(mktemp /tmp/omarchy-bsky-card.XXXXXX) || exit 1
-
-if ! curl -sSL --max-time 20 --max-filesize 2000000 -o "$tmp" "$url" 2>/dev/null; then
-  rm -f "$tmp"
-  exit 1
-fi
-if [ ! -s "$tmp" ]; then
-  rm -f "$tmp"
-  exit 1
-fi
-
-mime=$(file -b --mime-type "$tmp" 2>/dev/null || echo "application/octet-stream")
-
+timeout --kill-after=1 25 python3 "$(dirname "$0")/request.py" --image "$1" "$tmp" || exit 1
+size=$(stat -c%s "$tmp")
+[[ "$size" -gt 0 && "$size" -le 1000000 ]] || exit 1
+mime=$(timeout --kill-after=1 3 file -b --mime-type "$tmp") || exit 1
 case "$mime" in
   image/png | image/jpeg | image/webp) ;;
-  *)
-    out="${tmp}.png"
-    if command -v ffmpeg >/dev/null 2>&1 &&
-      ffmpeg -y -loglevel error -i "$tmp" "$out" >/dev/null 2>&1 &&
-      [ -s "$out" ]; then
-      rm -f "$tmp"
-      tmp="$out"
-      mime="image/png"
-    else
-      rm -f "$tmp"
-      exit 1
-    fi
-    ;;
+  *) exit 1 ;;
 esac
-
-size=$(stat -c%s "$tmp")
 printf '%s\t%s\t%s\n' "$mime" "$tmp" "$size"
+trap - EXIT

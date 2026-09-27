@@ -98,6 +98,11 @@ redirects are not followed. Clipboard reads have a 5-second deadline and caps
 of 64 KiB for text/type lists and 1 MB for images. Image conversion has a
 10-second deadline and a 1 MB output cap. Oversized inputs fail closed.
 
+Link-card thumbnails must resolve exclusively to public IP addresses. Downloads
+pin a checked address and disable redirects, proxies, and user curl configuration.
+A 1 MB OS write limit and finite download deadline apply. Only PNG/JPEG/WebP
+thumbnails are accepted; other formats are omitted without conversion.
+
 Limits enforced client-side: 300 graphemes, 4 images, 5 links, images under
 1 MB in JPEG/PNG/WebP.
 
