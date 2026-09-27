@@ -12,6 +12,11 @@ readonly MAX_RESPONSE_BLOCKS=$(((MAX_RESPONSE_BYTES + 1023) / 1024))
 
 session_file="$1"
 pds="${2%/}"
+[[ "$pds" == https://* ]] || {
+  printf '%s\n' "0||PDS URL must use HTTPS" >&2
+  exit 1
+}
+
 header_file=$(mktemp)
 body_file=$(mktemp)
 trap 'rm -f "$header_file" "$body_file"' EXIT
@@ -23,7 +28,7 @@ umask 077
 printf 'Authorization: Bearer %s\n' "$refresh_jwt" > "$header_file"
 chmod 600 "$header_file"
 
-if http_code=$(curl --silent --show-error --connect-timeout "$CONNECT_TIMEOUT_SECONDS" --max-time "$TOTAL_TIMEOUT_SECONDS" --max-filesize "$MAX_RESPONSE_BYTES" --output "$body_file" --write-out '%{http_code}' --request POST --header "@$header_file" "$pds/xrpc/com.atproto.server.refreshSession"); then
+if http_code=$(curl --disable --proto '=https' --proto-redir '=https' --silent --show-error --connect-timeout "$CONNECT_TIMEOUT_SECONDS" --max-time "$TOTAL_TIMEOUT_SECONDS" --max-filesize "$MAX_RESPONSE_BYTES" --output "$body_file" --write-out '%{http_code}' --request POST --header "@$header_file" "$pds/xrpc/com.atproto.server.refreshSession"); then
   :
 else
   curl_status=$?

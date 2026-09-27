@@ -266,10 +266,11 @@ Item {
     if (!handle) return setupError("Enter your Bluesky handle")
     if (!Api.looksLikeAppPassword(password))
       return setupError("That doesn't look like an app password. Create one at bsky.app → Settings → App passwords")
+    var pdsUrl = Api.pdsRoot(pds || Api.DEFAULT_PDS)
+    if (pdsUrl.indexOf("https://") !== 0) return setupError("PDS URL must use HTTPS")
     root.savingSetup = true
     setup.statusText = "Verifying…"
     setup.statusError = false
-    var pdsUrl = Api.pdsRoot(pds || Api.DEFAULT_PDS)
     Api.createSession(root.requestHttp, pdsUrl, handle, password, function(err, tokens) {
       root.savingSetup = false
       if (err) return setupError(err.message || "Login failed")
@@ -332,6 +333,13 @@ Item {
     if (!root.opened || !root.sessionValidationPending || !root.prefsLoaded || !root.sessionLoaded || !root.passwordLoaded) return
     root.sessionValidationPending = false
     if (!root.configured) return
+    if (root.pds.indexOf("https://") !== 0) {
+      root.setupMode = true
+      root.clearStatus()
+      root.setupError("PDS URL must use HTTPS. Update it before signing in.")
+      Qt.callLater(root.focusDefault)
+      return
+    }
     root.openingSession = true
     root.refreshTokens(function(err) {
       root.openingSession = false

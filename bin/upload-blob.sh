@@ -20,6 +20,11 @@ session_file="$2"
 mime="$3"
 image="$4"
 
+[[ "$pds" == https://* ]] || {
+  printf '%s\n' "0|PDS URL must use HTTPS" >&2
+  exit 1
+}
+
 jwt=$(jq -r '.accessJwt // empty' "$session_file") || jwt=""
 [ -n "$jwt" ] || {
   echo "0|no session token"
@@ -34,7 +39,7 @@ ulimit -f "$MAX_RESPONSE_BLOCKS"
 
 printf 'Authorization: Bearer %s\n' "$jwt" >"$hdr"
 
-if code=$(curl -sS --connect-timeout "$CONNECT_TIMEOUT_SECONDS" --max-time "$TOTAL_TIMEOUT_SECONDS" --max-filesize "$MAX_RESPONSE_BYTES" -o "$resp" -w '%{http_code}' -X POST "$pds/xrpc/com.atproto.repo.uploadBlob" -H @"$hdr" -H "Content-Type: $mime" --data-binary @"$image" 2>/dev/null); then
+if code=$(curl --disable --proto '=https' --proto-redir '=https' -sS --connect-timeout "$CONNECT_TIMEOUT_SECONDS" --max-time "$TOTAL_TIMEOUT_SECONDS" --max-filesize "$MAX_RESPONSE_BYTES" -o "$resp" -w '%{http_code}' -X POST "$pds/xrpc/com.atproto.repo.uploadBlob" -H @"$hdr" -H "Content-Type: $mime" --data-binary @"$image" 2>/dev/null); then
   :
 else
   curl_status=$?

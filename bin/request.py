@@ -41,6 +41,9 @@ try:
     options = json.load(sys.stdin)
     if not options['url'].startswith(('https://', 'http://')):
         raise ValueError('Unsupported URL')
+    target = urllib.parse.urlsplit(options['url'])
+    if target.scheme != 'https' and (options.get('method', 'GET').upper() != 'GET' or options.get('body') is not None or target.username is not None or any(name.lower() in ('authorization', 'cookie', 'proxy-authorization') for name in options.get('headers', {}))):
+        raise ValueError('Credential requests require HTTPS')
     # Return all status bodies directly; never forward credentials on redirects.
     status_handler = urllib.request.HTTPErrorProcessor()
     status_handler.http_response = status_handler.https_response = lambda request, response: response
@@ -55,5 +58,5 @@ try:
             raise ValueError('HTTP response exceeded 262144 bytes')
         result = {'status': response.status, 'text': data.decode('utf-8', errors='replace')}
 except Exception as error:
-    result = {'status': 0, 'text': '', 'error': 'HTTP response exceeded 262144 bytes' if isinstance(error, ValueError) and str(error).startswith('HTTP response exceeded') else 'Network request failed'}
+    result = {'status': 0, 'text': '', 'error': str(error) if isinstance(error, ValueError) and str(error) in ('HTTP response exceeded 262144 bytes', 'Credential requests require HTTPS') else 'Network request failed'}
 print(json.dumps(result))

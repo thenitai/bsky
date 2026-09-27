@@ -51,7 +51,9 @@ Replace `right` with `left` or `center` as preferred.
 2. Click the Bluesky bar icon or press the composer shortcut — the first run
    shows the sign-in form.
    Enter your handle (e.g. `alice.bsky.social`) and the app password.
-3. Optional: enter a custom PDS URL if your account is not on `bsky.social`.
+3. Optional: enter a custom HTTPS PDS URL if your account is not on `bsky.social`.
+   HTTP PDS URLs are rejected before credentials are sent; saved HTTP configurations
+   return to Settings for correction. Certificate verification remains enabled.
 
 Credentials are stored in `~/.config/omarchy-bsky/` (directory mode `0700`,
 secret files `0600`), never in `shell.json`.
